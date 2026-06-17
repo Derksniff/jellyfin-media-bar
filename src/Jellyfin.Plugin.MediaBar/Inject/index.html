@@ -1,0 +1,94 @@
+﻿<script>
+    // Load the Media Bar CSS/JS from the Jellyfin server itself (same-origin)
+    // instead of a third-party CDN — removes an extra DNS lookup + TLS handshake
+    // from first paint and drops the external dependency. The server's base path
+    // (e.g. "/jf" for a sub-path install, or "" at the root) is derived from the
+    // current page URL so this works regardless of where Jellyfin is mounted,
+    // without relying on a <base> tag.
+    (function () {
+        var path = window.location.pathname;
+        var webIdx = path.indexOf("/web/");
+        var base = webIdx >= 0 ? path.substring(0, webIdx) : "";
+        var version = "{{Config.VersionString}}";
+        var bust = version ? "?v=" + encodeURIComponent(version) : "";
+
+        var css = document.createElement("link");
+        css.rel = "stylesheet";
+        css.href = base + "/MediaBar/slideshowpure.css" + bust;
+        document.head.appendChild(css);
+
+        var js = document.createElement("script");
+        js.defer = true;
+        js.src = base + "/MediaBar/slideshowpure.js" + bust;
+        document.head.appendChild(js);
+    })();
+</script>
+<script defer>
+    if (typeof MediaBarConfigHandler == 'undefined') {
+        const MediaBarConfigHandler = {
+            loadConfig: async function () {
+                return await window.ApiClient.getJSON(window.ApiClient.getUrl("MediaBar/WebConfig"));
+            },
+            init: async function () {
+                let config = await MediaBarConfigHandler.loadConfig();
+
+                if (config.ImageSvgs.ImdbLogo !== null && config.ImageSvgs.ImdbLogo !== undefined) {
+                    window.slideshowPure.CONFIG.IMAGE_SVG.imdbLogo = config.ImageSvgs.ImdbLogo;
+                }
+                if (config.ImageSvgs.TomatoLogo !== null && config.ImageSvgs.TomatoLogo !== undefined) {
+                    window.slideshowPure.CONFIG.IMAGE_SVG.imdbLogo = config.ImageSvgs.TomatoLogo;
+                }
+                if (config.ImageSvgs.FreshTomato !== null && config.ImageSvgs.FreshTomato !== undefined) {
+                    window.slideshowPure.CONFIG.IMAGE_SVG.imdbLogo = config.ImageSvgs.FreshTomato;
+                }
+                if (config.ImageSvgs.RottenTomato !== null && config.ImageSvgs.RottenTomato !== undefined) {
+                    window.slideshowPure.CONFIG.IMAGE_SVG.imdbLogo = config.ImageSvgs.RottenTomato;
+                }
+                if (config.ShuffleInterval >= 0) {
+                    window.slideshowPure.CONFIG.shuffleInterval = config.ShuffleInterval;
+                }
+                if (config.RetryInterval >= 0) {
+                    window.slideshowPure.CONFIG.retryInterval = config.RetryInterval;
+                }
+                if (config.MinSwipeDistance >= 0) {
+                    window.slideshowPure.CONFIG.minSwipeDistance = config.MinSwipeDistance;
+                }
+                if (config.LoadingCheckInterval >= 0) {
+                    window.slideshowPure.CONFIG.loadingCheckInterval = config.LoadingCheckInterval;
+                }
+                if (config.MaxPlotLength >= 0) {
+                    window.slideshowPure.CONFIG.maxPlotLength = config.MaxPlotLength;
+                }
+                if (config.MaxMovies >= 0) {
+                    window.slideshowPure.CONFIG.maxMovies = config.MaxMovies;
+                }
+                if (config.MaxTvShows >= 0) {
+                    window.slideshowPure.CONFIG.maxTvShows = config.MaxTvShows;
+                }
+                if (config.MaxItems >= 0) {
+                    window.slideshowPure.CONFIG.maxItems = config.MaxItems;
+                }
+                if (config.PreloadCount >= 0) {
+                    window.slideshowPure.CONFIG.preloadCount = config.PreloadCount;
+                }
+                if (config.FadeTransitionDuration >= 0) {
+                    window.slideshowPure.CONFIG.fadeTransitionDuration = config.FadeTransitionDuration;
+                }
+                if (config.EnableTrailers !== undefined && config.EnableTrailers !== null) {
+                    window.slideshowPure.CONFIG.enableTrailers = config.EnableTrailers;
+                }
+                window.slideshowPure.CONFIG.slideAnimationEnabled = config.SlideAnimationEnabled;
+            }
+        };
+
+        let waitingForPluginInterval = setInterval(function () {
+            if (window.slideshowPure && window.slideshowPure.CONFIG && window.ApiClient) {
+                clearInterval(waitingForPluginInterval);
+                
+                MediaBarConfigHandler.init().then(r => {
+                    console.log('Loaded Media Bar plugin config into plugin javascript');
+                });
+            }
+        }, 100);
+    }
+</script>

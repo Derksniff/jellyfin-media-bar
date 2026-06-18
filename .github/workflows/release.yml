@@ -1,0 +1,80 @@
+name: Build & Publish Plugin
+
+# Push a tag like `v2.4.13.0` to trigger a release. The version is taken from
+# the tag (the leading `v` is stripped), so it must stay above the upstream
+# release you're replacing for Jellyfin to offer it as an update.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      # Check out main (not the detached tag) so we can commit the updated
+      # manifest back to the branch at the end.
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Resolve version and asset URL from tag
+        id: meta
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          # Base URL that the release asset will live at; jprm appends the zip
+          # filename to form each version entry's sourceUrl.
+          echo "asset_base=https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/" >> "$GITHUB_OUTPUT"
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install JPRM
+        run: python -m pip install --upgrade jprm
+
+      - name: Build plugin zip
+        id: build
+        run: |
+          mkdir -p artifacts
+          # jprm prints the resulting zip path to stdout (debug logs go to
+          # stderr), so we capture it for the steps below.
+          ZIP=$(jprm --verbosity=debug plugin build "src/Jellyfin.Plugin.MediaBar" \
+                  --output=artifacts \
+                  --version="${{ steps.meta.outputs.version }}")
+          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
+          ls -l artifacts
+
+      - name: Create GitHub Release with the zip asset
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: artifacts/*.zip
+
+      - name: Add release to manifest.json
+        run: |
+          [ -f manifest.json ] || echo '[]' > manifest.json
+          jprm --verbosity=debug repo add \
+            --url="${{ steps.meta.outputs.asset_base }}" \
+            manifest.json \
+            "${{ steps.build.outputs.zip }}"
+
+      - name: Commit updated manifest back to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add manifest.json
+          git commit -m "Publish ${{ steps.meta.outputs.version }} to plugin manifest" || echo "manifest unchanged"
+          git push origin HEAD:main

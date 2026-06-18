@@ -1,0 +1,25 @@
+---
+# JPRM (Jellyfin Plugin Repository Manager) build descriptor.
+# The GUID is intentionally identical to upstream so this build REPLACES the
+# original "Media Bar" plugin rather than installing alongside it. Jellyfin
+# keeps the highest version for a given GUID, so the version here (and the tag
+# that drives CI) must stay above the upstream release you're replacing.
+name: "Media Bar"
+guid: "08f615ea-2107-4f04-89cc-091035f54448"
+version: "2.4.13.0"
+# 10.11.0.0 lets it install on any 10.11.x server (incl. 10.11.11).
+targetAbi: "10.11.0.0"
+framework: "net9.0"
+owner: "Derksniff"
+overview: "Home-screen media bar / hero slideshow for Jellyfin (performance fork)."
+description: >
+  Fork of IAmParadox27/jellyfin-plugin-media-bar with first-paint speedups:
+  web assets served same-origin instead of via a third-party CDN, the bulk
+  item query pre-caches detail data (removing per-slide round-trips), and the
+  YouTube/SponsorBlock calls no longer block the first slide.
+category: "General"
+artifacts:
+  - "Jellyfin.Plugin.MediaBar.dll"
+changelog: >
+  Performance fork: same-origin assets, single bulk item fetch (no N+1),
+  non-blocking trailer/SponsorBlock loading.

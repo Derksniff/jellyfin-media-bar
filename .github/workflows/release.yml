@@ -65,11 +65,10 @@ jobs:
 
       - name: Add release to manifest.json
         run: |
-          [ -f manifest.json ] || echo '[]' > manifest.json
-          jprm --verbosity=debug repo add \
-            --url="${{ steps.meta.outputs.asset_base }}" \
-            manifest.json \
-            "${{ steps.build.outputs.zip }}"
+          python3 .github/scripts/update_manifest.py \
+            "${{ steps.build.outputs.zip }}" \
+            "${{ steps.meta.outputs.asset_base }}" \
+            manifest.json
 
       - name: Commit updated manifest back to main
         run: |
